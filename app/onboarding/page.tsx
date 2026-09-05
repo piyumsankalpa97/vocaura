@@ -37,7 +37,7 @@ export default async function OnboardingPage() {
               Welcome to Vocaura
             </h1>
             <p className="text-muted-foreground text-sm">
-              Let's set up your profile to personalize your practice scenarios.
+              Let&apos;s set up your profile to personalize your practice scenarios.
             </p>
           </div>
           

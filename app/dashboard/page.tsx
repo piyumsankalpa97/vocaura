@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
-import { Mic, Clock, Target, CheckCircle2, Award } from "lucide-react";
+import { Mic, Clock, Target, Award } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   }
 
   // Validate server environment on dashboard load
-  const env = getServerEnv();
+  getServerEnv();
 
   // Fetch profile
   const { data: profile } = await supabase
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
         </h2>
         {prompts && prompts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {prompts.map((prompt: any) => (
+            {prompts.map((prompt) => (
               <div key={prompt.id} className="p-5 rounded-xl border border-border bg-card flex flex-col hover:border-primary/50 transition-colors">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
                   {prompt.practice_categories?.name}

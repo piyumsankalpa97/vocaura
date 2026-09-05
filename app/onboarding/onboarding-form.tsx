@@ -50,9 +50,9 @@ export function OnboardingForm() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "An error occurred while creating your profile.");
+      setError(err instanceof Error ? err.message : "An error occurred while creating your profile.");
       setIsLoading(false);
     }
   };
