@@ -19,6 +19,16 @@ export default async function DashboardLayout({
     redirect("/auth/login");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) {
+    redirect("/onboarding");
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* App Header */}

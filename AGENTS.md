@@ -44,15 +44,14 @@ Do not turn this into a generic language-learning platform.
 
 ## Before coding
 
-Inspect the current repository.
+Before implementing UI:
+use frontend-design
+use web-design-guidelines
 
-Determine whether a Next.js app already exists.
+Before implementing database/schema/RLS:
+use supabase-postgres-best-practices
 
-Do not overwrite an existing project blindly.
-
-If there is an existing app, integrate into its structure while preserving working code.
-
-If no app exists, initialize a clean Next.js TypeScript project.
+Always follow the project's own `.agents\rules` specifications over generic assumptions.
 
 ## Environment variables
 
@@ -60,8 +59,8 @@ Create/update `.env.example`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
 GROQ_API_KEY=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
@@ -71,7 +70,7 @@ Validate environment variables at runtime on the server.
 
 Never expose:
 
-`SUPABASE_SERVICE_ROLE_KEY`
+`SUPABASE_SECRET_KEY`
 `GROQ_API_KEY`
 `GEMINI_API_KEY`
 
