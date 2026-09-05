@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export function LoginForm({
   className,
@@ -38,10 +39,10 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      router.refresh();
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to sign in");
     } finally {
       setIsLoading(false);
     }
@@ -49,35 +50,42 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>
-            Enter your email below to login to your account
+      <Card className="border-border shadow-sm">
+        <CardHeader className="space-y-1.5 text-center">
+          <CardTitle className="text-xl font-semibold tracking-tight">
+            Welcome back
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            Sign in to your private Vocaura training workspace
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-xs font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="piyum@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-9 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-xs font-medium">
+                    Password
+                  </Label>
                   <Link
                     href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Forgot your password?
+                    Forgot password?
                   </Link>
                 </div>
                 <Input
@@ -86,18 +94,37 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="h-9 text-sm"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+
+              {error && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-9 text-sm font-medium mt-1"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    Signing in...
+                  </span>
+                ) : (
+                  "Sign in"
+                )}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
+
+            <div className="mt-5 text-center text-xs text-muted-foreground">
               Don&apos;t have an account?{" "}
               <Link
                 href="/auth/sign-up"
-                className="underline underline-offset-4"
+                className="text-foreground font-medium underline underline-offset-4 hover:text-primary transition-colors"
               >
                 Sign up
               </Link>

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export function SignUpForm({
   className,
@@ -39,18 +40,32 @@ export function SignUpForm({
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
         },
       });
+
       if (error) throw error;
-      router.push("/auth/sign-up-success");
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+
+      // If session is immediately established (confirmation disabled)
+      if (data.session) {
+        router.refresh();
+        router.push("/dashboard");
+      } else {
+        router.push("/auth/sign-up-success");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create account");
     } finally {
       setIsLoading(false);
     }
@@ -58,58 +73,91 @@ export function SignUpForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+      <Card className="border-border shadow-sm">
+        <CardHeader className="space-y-1.5 text-center">
+          <CardTitle className="text-xl font-semibold tracking-tight">
+            Create an account
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            Set up your private Vocaura training profile
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-xs font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="piyum@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-9 text-sm"
                 />
               </div>
+
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+                <Label htmlFor="password" className="text-xs font-medium">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
+                  placeholder="At least 6 characters"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="h-9 text-sm"
                 />
               </div>
+
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
+                <Label htmlFor="repeat-password" className="text-xs font-medium">
+                  Confirm Password
+                </Label>
                 <Input
                   id="repeat-password"
                   type="password"
                   required
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                  className="h-9 text-sm"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
+
+              {error && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-9 text-sm font-medium mt-1"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    Creating account...
+                  </span>
+                ) : (
+                  "Create account"
+                )}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
+
+            <div className="mt-5 text-center text-xs text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                Login
+              <Link
+                href="/auth/login"
+                className="text-foreground font-medium underline underline-offset-4 hover:text-primary transition-colors"
+              >
+                Sign in
               </Link>
             </div>
           </form>

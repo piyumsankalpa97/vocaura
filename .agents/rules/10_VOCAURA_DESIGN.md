@@ -8,6 +8,8 @@
 
 **Tone:** thoughtful, confident, human, focused.
 
+**Theme Switching:** Theme switching should be available between light and dark modes, with the light mode feeling like a clean, editorial space rather than a typical SaaS dashboard and dark mode feeling like a calm, editorial space rather than a typical dark SaaS dashboard.
+
 Avoid anything that looks like a generic AI SaaS, children's language app, or overly corporate HR platform.
 
 ## Color Direction
