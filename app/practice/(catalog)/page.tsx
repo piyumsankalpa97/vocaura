@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { PracticeCatalogView, Prompt, Category } from "./practice-catalog-view";
 import { Mic } from "lucide-react";
@@ -52,25 +51,23 @@ export default async function PracticePage() {
   })) as unknown as Prompt[];
 
   return (
-    <AppShell>
-      <div className="space-y-8 animate-in fade-in duration-300">
-        <PageHeader
-          eyebrow={
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Mic size={15} className="text-primary" />
-              Practice Catalog
-            </div>
-          }
-          title="Spoken English Exercises"
-          description="Select a targeted speaking scenario designed for your role. Practice spontaneous responses and receive structured AI evaluation."
-        />
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <PageHeader
+        eyebrow={
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Mic size={15} className="text-primary" />
+            Practice Catalog
+          </div>
+        }
+        title="Spoken English Exercises"
+        description="Select a targeted speaking scenario designed for your role. Practice spontaneous responses and receive structured AI evaluation."
+      />
 
-        <PracticeCatalogView
-          initialCategories={categories}
-          initialPrompts={prompts}
-          userRole={userRole}
-        />
-      </div>
-    </AppShell>
+      <PracticeCatalogView
+        initialCategories={categories}
+        initialPrompts={prompts}
+        userRole={userRole}
+      />
+    </div>
   );
 }

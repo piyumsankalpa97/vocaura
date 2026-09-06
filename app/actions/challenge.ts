@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getGeminiEvaluationProvider } from "@/lib/providers/gemini-evaluation";
 import { DailyChallenge } from "@/lib/ai/challenge-schema";
+import { logger } from "@/lib/logger";
 
 export interface TodayChallengeResult {
   hasChallenge: boolean;
@@ -150,7 +151,7 @@ export async function generateDailyChallengeAction(): Promise<GenerateChallengeR
 
       challengeData = response.challenge;
     } catch (llmErr) {
-      console.warn("LLM challenge generation failed, using deterministic fallback:", llmErr);
+      logger.warn({ err: llmErr }, "LLM challenge generation failed, using deterministic fallback");
       
       const primaryWeakness = mistakes?.[0]?.canonical_key || "concise professional communication";
       challengeData = {
@@ -208,7 +209,7 @@ export async function generateDailyChallengeAction(): Promise<GenerateChallengeR
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to generate daily challenge.";
-    console.error("generateDailyChallengeAction error:", message);
+    logger.error({ err }, "generateDailyChallengeAction error");
     return {
       success: false,
       error: message,

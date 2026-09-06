@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, Loader2 } from "lucide-react";
+
+const GOAL_OPTIONS = [
+  "Improve overall fluency",
+  "Prepare for job interviews",
+  "Build confidence in meetings",
+  "Expand professional vocabulary",
+  "Prepare for language tests"
+];
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -16,6 +25,17 @@ export function OnboardingForm() {
 
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState("");
+  const [goals, setGoals] = useState<string[]>([]);
+  const [professionalContext, setProfessionalContext] = useState("");
+  const [confidence, setConfidence] = useState("5");
+
+  const handleGoalToggle = (goal: string) => {
+    setGoals((current) =>
+      current.includes(goal)
+        ? current.filter((g) => g !== goal)
+        : [...current, goal]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +62,9 @@ export function OnboardingForm() {
           id: user.id,
           display_name: displayName,
           role: role,
+          goals: goals,
+          professional_context: professionalContext,
+          confidence_self_rating: parseInt(confidence, 10),
         });
 
       if (insertError) {
@@ -94,6 +117,55 @@ export function OnboardingForm() {
           <p className="text-xs text-muted-foreground mt-1.5">
             This helps Vocaura choose relevant practice scenarios.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="professional-context">Preferred Practice Context (Optional)</Label>
+          <Input
+            id="professional-context"
+            placeholder="e.g. ICU, Frontend Development, Client Meetings"
+            value={professionalContext}
+            onChange={(e) => setProfessionalContext(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <Label>Primary Goals</Label>
+          <div className="grid gap-2">
+            {GOAL_OPTIONS.map((goal) => (
+              <div key={goal} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`goal-${goal}`}
+                  checked={goals.includes(goal)}
+                  onCheckedChange={() => handleGoalToggle(goal)}
+                  disabled={isLoading}
+                />
+                <label
+                  htmlFor={`goal-${goal}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {goal}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2 pt-2">
+          <Label htmlFor="confidence">Current Spoken English Confidence (1-10)</Label>
+          <Select value={confidence} onValueChange={setConfidence} disabled={isLoading}>
+            <SelectTrigger id="confidence">
+              <SelectValue placeholder="Select confidence level" />
+            </SelectTrigger>
+            <SelectContent>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                <SelectItem key={num} value={num.toString()}>
+                  {num} - {num === 1 ? "Very Anxious" : num === 10 ? "Highly Confident" : "Moderate"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

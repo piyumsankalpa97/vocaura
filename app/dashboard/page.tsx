@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { getTopRecurringWeaknesses } from "@/app/actions/mistakes";
 import { getTodayDailyChallenge } from "@/app/actions/challenge";
 import { DailyChallengeCard } from "@/components/dashboard/daily-challenge-card";
+import { ChatGPTPromptCard } from "@/components/dashboard/chatgpt-prompt-card";
 
 import { PageHeader } from "@/components/layout/page-header";
 
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
   // Fetch profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, role")
+    .select("display_name, role, goals")
     .eq("id", user.id)
     .single();
 
@@ -34,6 +35,7 @@ export default async function DashboardPage() {
 
   // Fetch top recurring weaknesses (Phase 6)
   const { weaknesses } = await getTopRecurringWeaknesses(6);
+  const topWeakness = weaknesses && weaknesses.length > 0 ? weaknesses[0].canonical_key : null;
 
   // Fetch today's personalized challenge (Phase 8)
   const todayChallenge = await getTodayDailyChallenge();
@@ -46,6 +48,30 @@ export default async function DashboardPage() {
     .contains("role_scope", [profile?.role || ""])
     .order("difficulty", { ascending: true })
     .limit(5);
+
+  // Fetch Dashboard Stats
+  const { count: sessionsCount } = await supabase
+    .from("practice_sessions")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("status", "completed");
+
+  const { data: recordings } = await supabase
+    .from("recordings")
+    .select("duration_seconds")
+    .eq("user_id", user.id);
+  
+  const totalSpeakingSeconds = recordings?.reduce((acc, r) => acc + (Number(r.duration_seconds) || 0), 0) || 0;
+  const speakingMinutes = Math.round(totalSpeakingSeconds / 60);
+
+  const { data: evaluations } = await supabase
+    .from("evaluations")
+    .select("overall_score")
+    .eq("user_id", user.id);
+
+  const avgScore = evaluations && evaluations.length > 0
+    ? Math.round(evaluations.reduce((acc, r) => acc + (Number(r.overall_score) || 0), 0) / evaluations.length)
+    : null;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-300">
@@ -76,11 +102,13 @@ export default async function DashboardPage() {
             <Award size={16} className="text-primary" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-foreground">--</span>
+            <span className="text-3xl font-bold tracking-tight text-foreground">
+              {avgScore !== null ? avgScore : "--"}
+            </span>
             <span className="text-xs text-muted-foreground">/ 100</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Awaiting your first evaluated session
+            {avgScore !== null ? "Average across all sessions" : "Awaiting your first evaluated session"}
           </p>
         </div>
 
@@ -90,7 +118,7 @@ export default async function DashboardPage() {
             <Clock size={16} className="text-primary" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-foreground">0</span>
+            <span className="text-3xl font-bold tracking-tight text-foreground">{speakingMinutes}</span>
             <span className="text-xs text-muted-foreground">min</span>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -104,7 +132,7 @@ export default async function DashboardPage() {
             <Target size={16} className="text-primary" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-foreground">0</span>
+            <span className="text-3xl font-bold tracking-tight text-foreground">{sessionsCount || 0}</span>
             <span className="text-xs text-muted-foreground">sessions</span>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -161,6 +189,12 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      <ChatGPTPromptCard 
+        role={profile?.role} 
+        goal={profile?.goals} 
+        weakness={topWeakness} 
+      />
 
       {/* Recommended Prompts */}
       <div className="space-y-4">

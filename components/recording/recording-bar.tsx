@@ -20,6 +20,9 @@ export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
   const router = useRouter();
   const supabase = createClient();
 
+  const isBrowser = typeof window !== "undefined";
+  const isSupported = isBrowser ? !!window.MediaRecorder : true; // default true for SSR so we don't flash error
+
   const handleStart = async () => {
     if (!sessionId) {
       try {
@@ -74,12 +77,22 @@ export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
     return `${m}:${s}`;
   };
 
+  if (!isSupported) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] flex flex-col items-center justify-center z-50">
+        <div className="max-w-3xl w-full text-center text-sm text-red-500 font-medium p-2">
+          Your browser does not support audio recording. Please try a modern version of Chrome, Firefox, or Safari.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] flex flex-col items-center justify-center z-50">
       <div className="max-w-3xl w-full flex items-center justify-between gap-4">
         
         {/* Status / Volume Indicator */}
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1" aria-live="polite">
           {(recorder.status === "recording" || recorder.status === "paused") && (
             <div className="flex items-center gap-2">
               <div 
@@ -123,7 +136,7 @@ export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
 
           {recorder.status === "recording" && (
             <>
-              <Button onClick={recorder.pause} variant="secondary" size="icon" className="rounded-full">
+              <Button onClick={recorder.pause} variant="secondary" size="icon" className="rounded-full" aria-label="Pause Recording">
                 <Pause size={18} />
               </Button>
               <Button onClick={recorder.stop} variant="destructive" className="rounded-full shadow-md">
@@ -134,7 +147,7 @@ export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
 
           {recorder.status === "paused" && (
             <>
-              <Button onClick={recorder.resume} variant="secondary" size="icon" className="rounded-full">
+              <Button onClick={recorder.resume} variant="secondary" size="icon" className="rounded-full" aria-label="Resume Recording">
                 <Play size={18} />
               </Button>
               <Button onClick={recorder.stop} variant="destructive" className="rounded-full shadow-md">

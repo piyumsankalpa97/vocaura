@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 export interface MistakeRecord {
   id: string;
@@ -20,22 +22,27 @@ export interface MistakeRecord {
   updated_at: string;
 }
 
-export interface GetMistakesFilter {
-  type?: string;
-  resolved?: boolean;
-  search?: string;
-}
+const getMistakesFilterSchema = z.object({
+  type: z.string().optional(),
+  resolved: z.boolean().optional(),
+  search: z.string().optional(),
+}).optional();
+
+export type GetMistakesFilter = z.infer<typeof getMistakesFilterSchema>;
 
 export async function getUserMistakes(
-  filters?: GetMistakesFilter
+  rawFilters?: GetMistakesFilter
 ): Promise<{ success: boolean; mistakes: MistakeRecord[]; error?: string }> {
   try {
+    const filters = getMistakesFilterSchema.parse(rawFilters);
+    
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      logger.warn("Unauthorized access attempt to getUserMistakes");
       return { success: false, mistakes: [], error: "Unauthorized" };
     }
 
@@ -64,11 +71,13 @@ export async function getUserMistakes(
     const { data, error } = await query;
 
     if (error) {
+      logger.error({ err: error }, "Supabase error fetching user mistakes");
       return { success: false, mistakes: [], error: error.message };
     }
 
     return { success: true, mistakes: (data as MistakeRecord[]) || [] };
   } catch (err) {
+    logger.error({ err }, "Error in getUserMistakes");
     return {
       success: false,
       mistakes: [],
@@ -81,12 +90,15 @@ export async function toggleMistakeResolved(
   mistakeId: string
 ): Promise<{ success: boolean; resolved?: boolean; error?: string }> {
   try {
+    const validId = z.string().uuid("Invalid mistake ID").parse(mistakeId);
+    
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      logger.warn("Unauthorized access attempt to toggleMistakeResolved");
       return { success: false, error: "Unauthorized" };
     }
 
@@ -94,11 +106,12 @@ export async function toggleMistakeResolved(
     const { data: mistake, error: fetchError } = await supabase
       .from("mistakes")
       .select("id, resolved")
-      .eq("id", mistakeId)
+      .eq("id", validId)
       .eq("user_id", user.id)
       .single();
 
     if (fetchError || !mistake) {
+      logger.error({ err: fetchError, validId }, "Mistake not found or fetch error");
       return { success: false, error: "Mistake not found" };
     }
 
@@ -111,10 +124,11 @@ export async function toggleMistakeResolved(
         resolved: nextState,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", mistakeId)
+      .eq("id", validId)
       .eq("user_id", user.id);
 
     if (updateError) {
+      logger.error({ err: updateError, validId }, "Error updating mistake state");
       return { success: false, error: updateError.message };
     }
 
@@ -123,6 +137,7 @@ export async function toggleMistakeResolved(
 
     return { success: true, resolved: nextState };
   } catch (err) {
+    logger.error({ err, mistakeId }, "Error in toggleMistakeResolved");
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to toggle mistake status",
@@ -131,15 +146,18 @@ export async function toggleMistakeResolved(
 }
 
 export async function getTopRecurringWeaknesses(
-  limit = 5
+  rawLimit: number = 5
 ): Promise<{ success: boolean; weaknesses: MistakeRecord[]; error?: string }> {
   try {
+    const limit = z.number().int().positive().max(50).parse(rawLimit);
+    
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      logger.warn("Unauthorized access attempt to getTopRecurringWeaknesses");
       return { success: false, weaknesses: [], error: "Unauthorized" };
     }
 
@@ -152,11 +170,13 @@ export async function getTopRecurringWeaknesses(
       .limit(limit);
 
     if (error) {
+      logger.error({ err: error }, "Error fetching top recurring weaknesses");
       return { success: false, weaknesses: [], error: error.message };
     }
 
     return { success: true, weaknesses: (data as MistakeRecord[]) || [] };
   } catch (err) {
+    logger.error({ err }, "Error in getTopRecurringWeaknesses");
     return {
       success: false,
       weaknesses: [],
