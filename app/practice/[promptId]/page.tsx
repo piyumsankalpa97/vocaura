@@ -31,7 +31,7 @@ export default async function PracticePage({ params }: { params: { promptId: str
       {/* Header */}
       <div className="flex items-center gap-4 border-b border-border/70 pb-6">
         <Link 
-          href="/dashboard" 
+          href="/practice" 
           className="p-2 -ml-2 rounded-full hover:bg-accent text-muted-foreground transition-colors"
         >
           <ChevronLeft size={20} />

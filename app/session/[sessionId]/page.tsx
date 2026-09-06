@@ -63,12 +63,21 @@ export default async function SessionPage({ params }: SessionPageProps) {
     transcript = transcriptData;
   }
 
+  // 5. Fetch evaluation if exists
+  const { data: evaluation } = await supabase
+    .from("evaluations")
+    .select("*")
+    .eq("session_id", sessionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const prompt = session.practice_prompts;
 
   return (
     <div className="p-6 pb-24 min-h-screen">
       <SessionTranscriptionView
         sessionId={sessionId}
+        sessionStatus={session.status}
         prompt={{
           id: prompt?.id || "",
           title: prompt?.title || "Practice Session",
@@ -78,6 +87,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
         }}
         initialRecording={recording}
         initialTranscript={transcript}
+        initialEvaluation={evaluation}
         audioUrl={audioUrl}
       />
     </div>

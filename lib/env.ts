@@ -10,7 +10,7 @@ const serverEnvSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   GROQ_API_KEY: z.string().min(1, "GROQ_API_KEY is required"),
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
-  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
 });
 
 const clientEnvSchema = z.object({

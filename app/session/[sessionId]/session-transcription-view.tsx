@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { transcribeSession } from "@/app/actions/transcribe";
+import { evaluateSession, EvaluateSessionResult } from "@/app/actions/evaluate";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
@@ -16,9 +17,12 @@ import {
   Layers,
 } from "lucide-react";
 import Link from "next/link";
+import { SessionEvaluationView } from "./session-evaluation-view";
+import { EvaluationResult } from "@/lib/ai/evaluation-schema";
 
 interface SessionTranscriptionViewProps {
   sessionId: string;
+  sessionStatus: string;
   prompt: {
     id: string;
     title: string;
@@ -39,31 +43,73 @@ interface SessionTranscriptionViewProps {
     word_count: number | null;
     segment_timestamps: unknown;
   } | null;
+  initialEvaluation: {
+    id?: string;
+    session_id: string;
+    overall_score: number;
+    fluency_score?: number | null;
+    grammar_score?: number | null;
+    vocabulary_score?: number | null;
+    clarity_score?: number | null;
+    professionalism_score?: number | null;
+    structure_score?: number | null;
+    filler_control_score?: number | null;
+    pace_wpm?: number | null;
+    analysis_json: EvaluationResult;
+    model_provider?: string | null;
+    model_name?: string | null;
+    created_at?: string;
+  } | null;
   audioUrl: string | null;
 }
 
 export function SessionTranscriptionView({
   sessionId,
+  sessionStatus,
   prompt,
   initialRecording,
   initialTranscript,
+  initialEvaluation,
   audioUrl,
 }: SessionTranscriptionViewProps) {
   const [transcript, setTranscript] = useState(initialTranscript);
+  const [evaluation, setEvaluation] = useState(initialEvaluation);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isTranscribing, startTranscriptionTransition] = useTransition();
+  const [isEvaluating, startEvaluationTransition] = useTransition();
   const [showSegments, setShowSegments] = useState(false);
 
-  const isAlreadyDone = Boolean(transcript?.text);
-  const isFailed = initialRecording?.transcription_status === "failed" && !transcript;
+  const isTranscriptionDone = Boolean(transcript?.text);
+  const isEvaluationDone = Boolean(evaluation?.overall_score !== undefined);
+  const isTranscriptionFailed =
+    initialRecording?.transcription_status === "failed" && !transcript;
+  const isEvaluationFailed = sessionStatus === "failed" && !evaluation && isTranscriptionDone;
+
+  const runEvaluation = useCallback((force = false) => {
+    setError(null);
+    startEvaluationTransition(async () => {
+      try {
+        const result = await evaluateSession(sessionId, { force });
+        if (result.success && result.evaluation) {
+          setEvaluation(result.evaluation as unknown as typeof initialEvaluation);
+        } else {
+          setError(result.error || "Failed to analyze speech with AI.");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Evaluation failed.");
+      }
+    });
+  }, [sessionId, initialEvaluation]);
 
   const runTranscription = useCallback((force = false) => {
     setError(null);
-    startTransition(async () => {
+    startTranscriptionTransition(async () => {
       try {
         const result = await transcribeSession(sessionId, { force });
         if (result.success && result.transcript) {
           setTranscript(result.transcript as typeof initialTranscript);
+          // Automatically trigger evaluation upon successful transcription
+          runEvaluation(force);
         } else {
           setError(result.error || "Failed to transcribe audio.");
         }
@@ -71,14 +117,18 @@ export function SessionTranscriptionView({
         setError(err instanceof Error ? err.message : "Transcription failed.");
       }
     });
-  }, [sessionId]);
+  }, [sessionId, initialTranscript, runEvaluation]);
 
   useEffect(() => {
-    // Automatically trigger transcription if not yet completed and not explicitly marked failed
+    // 1. If recording exists but no transcript yet and not failed, trigger transcription
     if (!initialTranscript && initialRecording && initialRecording.transcription_status !== "failed") {
       runTranscription();
     }
-  }, [initialTranscript, initialRecording, runTranscription]);
+    // 2. If transcript already exists but evaluation not yet completed and not marked failed, trigger evaluation
+    else if (initialTranscript && !initialEvaluation && sessionStatus !== "failed") {
+      runEvaluation();
+    }
+  }, [initialTranscript, initialRecording, initialEvaluation, sessionStatus, runTranscription, runEvaluation]);
 
   const segments = Array.isArray(transcript?.segment_timestamps)
     ? (transcript.segment_timestamps as Array<{
@@ -123,7 +173,7 @@ export function SessionTranscriptionView({
       {/* Pipeline Status Stepper */}
       <div className="p-4 rounded-xl bg-card border border-border">
         <div className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-          Processing Pipeline
+          Analysis Pipeline
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
           {/* Stage 1: Upload */}
@@ -135,66 +185,126 @@ export function SessionTranscriptionView({
           {/* Stage 2: Transcription */}
           <div
             className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs transition-colors ${
-              isPending
+              isTranscribing
                 ? "bg-primary/10 border-primary/30 text-primary font-medium"
-                : isAlreadyDone
+                : isTranscriptionDone
                 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-medium"
-                : isFailed
+                : isTranscriptionFailed
                 ? "bg-destructive/10 border-destructive/20 text-destructive font-medium"
                 : "bg-muted/40 border-border text-muted-foreground"
             }`}
           >
-            {isPending ? (
+            {isTranscribing ? (
               <Loader2 size={18} className="animate-spin shrink-0 text-primary" />
-            ) : isAlreadyDone ? (
+            ) : isTranscriptionDone ? (
               <CheckCircle2 size={18} className="shrink-0" />
-            ) : isFailed ? (
+            ) : isTranscriptionFailed ? (
               <AlertCircle size={18} className="shrink-0" />
             ) : (
               <Clock size={18} className="shrink-0 text-muted-foreground" />
             )}
             <span>
-              {isPending
+              {isTranscribing
                 ? "Transcribing with Whisper..."
-                : isAlreadyDone
+                : isTranscriptionDone
                 ? "Transcribed ✓"
-                : isFailed
+                : isTranscriptionFailed
                 ? "Transcription Failed"
                 : "Pending Transcription"}
             </span>
           </div>
 
-          {/* Stage 3: Evaluation (Phase 5 Placeholder) */}
-          <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border text-muted-foreground text-xs">
-            <Sparkles size={18} className="shrink-0 text-muted-foreground/70" />
-            <span>AI Evaluation (Phase 5)</span>
+          {/* Stage 3: Evaluation */}
+          <div
+            className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs transition-colors ${
+              isEvaluating
+                ? "bg-primary/10 border-primary/30 text-primary font-medium"
+                : isEvaluationDone
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-medium"
+                : isEvaluationFailed
+                ? "bg-destructive/10 border-destructive/20 text-destructive font-medium"
+                : "bg-muted/40 border-border text-muted-foreground"
+            }`}
+          >
+            {isEvaluating ? (
+              <Loader2 size={18} className="animate-spin shrink-0 text-primary" />
+            ) : isEvaluationDone ? (
+              <CheckCircle2 size={18} className="shrink-0" />
+            ) : isEvaluationFailed ? (
+              <AlertCircle size={18} className="shrink-0" />
+            ) : (
+              <Sparkles size={18} className="shrink-0 text-muted-foreground" />
+            )}
+            <span>
+              {isEvaluating
+                ? "Analyzing with Gemini..."
+                : isEvaluationDone
+                ? "Evaluation Complete ✓"
+                : isEvaluationFailed
+                ? "Evaluation Failed"
+                : "Pending Evaluation"}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Error / Retry Banner */}
-      {(error || (isFailed && !isPending)) && (
+      {(error || ((isTranscriptionFailed || isEvaluationFailed) && !isTranscribing && !isEvaluating)) && (
         <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-destructive text-sm font-medium">
             <AlertCircle size={18} className="shrink-0" />
-            <span>{error || "An error occurred during speech transcription."}</span>
+            <span>
+              {error ||
+                (isEvaluationFailed
+                  ? "Failed to generate evaluation with Gemini."
+                  : "An error occurred during audio processing.")}
+            </span>
           </div>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => runTranscription(true)}
-            disabled={isPending}
-            className="shrink-0 gap-1.5 text-xs"
-          >
-            {isPending ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RotateCcw size={14} />
+          <div className="flex items-center gap-2">
+            {!isTranscriptionDone && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => runTranscription(true)}
+                disabled={isTranscribing}
+                className="shrink-0 gap-1.5 text-xs"
+              >
+                {isTranscribing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                Retry Transcription
+              </Button>
             )}
-            Retry Transcription
-          </Button>
+            {isTranscriptionDone && !isEvaluationDone && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => runEvaluation(true)}
+                disabled={isEvaluating}
+                className="shrink-0 gap-1.5 text-xs"
+              >
+                {isEvaluating ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                Retry Analysis
+              </Button>
+            )}
+          </div>
         </div>
       )}
+
+      {/* Evaluation Results Section */}
+      {isEvaluating ? (
+        <div className="p-12 rounded-2xl bg-card border border-border/80 text-center space-y-4">
+          <Loader2 size={36} className="animate-spin mx-auto text-primary" />
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-foreground">
+              Evaluating your response with Gemini...
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Analyzing fluency, vocabulary, structural clarity, and identifying recurring communication patterns.
+            </p>
+          </div>
+        </div>
+      ) : evaluation ? (
+        <SessionEvaluationView evaluation={evaluation} promptId={prompt.id} />
+      ) : null}
 
       {/* Audio Playback Player */}
       {audioUrl && (
@@ -221,7 +331,7 @@ export function SessionTranscriptionView({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/70 pb-4">
           <div className="flex items-center gap-2">
             <FileText size={18} className="text-primary" />
-            <h2 className="text-base font-semibold text-foreground">Transcript</h2>
+            <h2 className="text-base font-semibold text-foreground">Spoken Transcript</h2>
           </div>
 
           {transcript && (
@@ -252,7 +362,7 @@ export function SessionTranscriptionView({
         </div>
 
         {/* Transcript Body */}
-        {isPending ? (
+        {isTranscribing ? (
           <div className="py-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 size={32} className="animate-spin text-primary" />
             <p className="text-sm font-medium">Transcribing your audio using Groq Whisper...</p>
@@ -288,7 +398,7 @@ export function SessionTranscriptionView({
           </div>
         ) : (
           <div className="py-8 text-center text-muted-foreground text-sm">
-            {isFailed
+            {isTranscriptionFailed
               ? "Transcription could not be completed. Click 'Retry Transcription' above."
               : "No transcript available."}
           </div>

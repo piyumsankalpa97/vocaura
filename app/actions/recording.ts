@@ -2,7 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function createPracticeSession(promptId: string, categoryId: string) {
+export async function createPracticeSession(
+  promptId: string,
+  categoryId?: string | null,
+  mode: string = "practice"
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -13,8 +17,8 @@ export async function createPracticeSession(promptId: string, categoryId: string
     .insert({
       user_id: user.id,
       prompt_id: promptId,
-      category_id: categoryId,
-      mode: "practice",
+      category_id: categoryId || null,
+      mode: mode,
       status: "created",
       started_at: new Date().toISOString()
     })

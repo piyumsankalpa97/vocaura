@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
-import { Mic, Clock, Target, Award } from "lucide-react";
+import { Mic, Clock, Target, Award, AlertTriangle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
+import { getTopRecurringWeaknesses } from "@/app/actions/mistakes";
+import { getTodayDailyChallenge } from "@/app/actions/challenge";
+import { DailyChallengeCard } from "@/components/dashboard/daily-challenge-card";
+
+import { PageHeader } from "@/components/layout/page-header";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -27,38 +32,41 @@ export default async function DashboardPage() {
 
   const userGreeting = profile?.display_name || user?.email?.split("@")[0] || "there";
 
+  // Fetch top recurring weaknesses (Phase 6)
+  const { weaknesses } = await getTopRecurringWeaknesses(6);
+
+  // Fetch today's personalized challenge (Phase 8)
+  const todayChallenge = await getTodayDailyChallenge();
+
   // Fetch prompts filtered by role
   const { data: prompts } = await supabase
     .from("practice_prompts")
     .select("*, practice_categories(name)")
+    .eq("active", true)
     .contains("role_scope", [profile?.role || ""])
     .order("difficulty", { ascending: true })
     .limit(5);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 animate-in fade-in duration-300">
       {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/70 pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-            Good day, {userGreeting}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Welcome to your private English communication training space.
-          </p>
-          <div className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+      <PageHeader
+        eyebrow={
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
             {profile?.role || "User"}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
+        }
+        title={`Good day, ${userGreeting}`}
+        description="Welcome to your private English communication training space."
+        action={
           <Button asChild className="gap-1.5 text-xs font-medium">
             <Link href="/practice">
               <Mic size={14} />
               Start Practice Session
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -103,6 +111,55 @@ export default async function DashboardPage() {
             Interview & scenario practices
           </p>
         </div>
+      </div>
+
+      {/* Personalized Daily Challenge (Phase 8) */}
+      <DailyChallengeCard initialChallenge={todayChallenge} userRole={profile?.role} />
+
+      {/* Recurring Weaknesses Card (Phase 6) */}
+      <div className="p-6 rounded-2xl border border-border/80 bg-card shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">
+              Recurring Weaknesses
+            </h2>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="text-xs h-7 text-muted-foreground hover:text-foreground gap-1">
+            <Link href="/mistakes">
+              View all mistakes
+              <ArrowRight size={12} />
+            </Link>
+          </Button>
+        </div>
+
+        {weaknesses && weaknesses.length > 0 ? (
+          <div className="flex flex-wrap gap-2.5">
+            {weaknesses.map((item) => (
+              <Link
+                key={item.id}
+                href="/mistakes"
+                className="group inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/40 border border-border/70 hover:border-primary/50 hover:bg-secondary/70 transition-all text-xs"
+              >
+                <span className="font-mono font-medium text-foreground group-hover:text-primary transition-colors">
+                  {item.canonical_key}
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-background/80 text-[11px] font-bold text-muted-foreground border border-border/60">
+                  ×{item.occurrence_count}
+                </span>
+                {item.type && (
+                  <span className="text-[10px] text-muted-foreground capitalize">
+                    ({item.type})
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="py-4 text-xs text-muted-foreground">
+            No recurring mistake patterns detected yet. Complete practice sessions to start tracking language habits.
+          </div>
+        )}
       </div>
 
       {/* Recommended Prompts */}

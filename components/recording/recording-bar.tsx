@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 
 interface RecordingBarProps {
   promptId: string;
-  categoryId: string;
+  categoryId?: string | null;
 }
 
 export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
