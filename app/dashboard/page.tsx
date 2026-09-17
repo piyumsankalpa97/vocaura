@@ -126,19 +126,22 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-2">
+        <Link href="/sessions" className="group block p-6 rounded-xl border border-border bg-card shadow-sm space-y-2 hover:border-primary/50 hover:bg-secondary/20 transition-all cursor-pointer">
           <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
             <span>Sessions Completed</span>
-            <Target size={16} className="text-primary" />
+            <Target size={16} className="text-primary group-hover:scale-110 transition-transform" />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight text-foreground">{sessionsCount || 0}</span>
             <span className="text-xs text-muted-foreground">sessions</span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Interview & scenario practices
+          <p className="text-xs text-muted-foreground flex items-center justify-between">
+            <span>Interview & scenario practices</span>
+            <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              View <ArrowRight size={12} />
+            </span>
           </p>
-        </div>
+        </Link>
       </div>
 
       {/* Personalized Daily Challenge (Phase 8) */}

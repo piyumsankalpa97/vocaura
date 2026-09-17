@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mic, Pause, Play, Square, UploadCloud, Loader2 } from "lucide-react";
 import { useAudioRecorder } from "@/lib/hooks/use-audio-recorder";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,21 @@ export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
   const recorder = useAudioRecorder();
   const [isUploading, setIsUploading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (recorder.audioBlob) {
+      const url = URL.createObjectURL(recorder.audioBlob);
+      setAudioUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setAudioUrl(null);
+    }
+  }, [recorder.audioBlob]);
 
   const isBrowser = typeof window !== "undefined";
   const isSupported = isBrowser ? !!window.MediaRecorder : true; // default true for SSR so we don't flash error
@@ -122,7 +135,21 @@ export function RecordingBar({ promptId, categoryId }: RecordingBarProps) {
           )}
 
           {recorder.status === "stopped" && recorder.audioBlob && (
-            <span className="text-sm text-green-600 font-medium">Recording saved ({formatTime(recorder.duration)})</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+              <span className="text-xs sm:text-sm text-green-600 font-medium whitespace-nowrap">
+                Recording saved ({formatTime(recorder.duration)})
+              </span>
+              {audioUrl && (
+                <audio
+                  controls
+                  src={audioUrl}
+                  className="h-8 max-w-[220px] sm:max-w-[260px] outline-none"
+                  preload="metadata"
+                >
+                  Your browser does not support audio playback.
+                </audio>
+              )}
+            </div>
           )}
         </div>
 

@@ -15,6 +15,7 @@ interface AppHeaderProps {
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/practice", label: "Practice" },
+  { href: "/sessions", label: "Sessions" },
   { href: "/progress", label: "Progress" },
   { href: "/mistakes", label: "Mistakes" },
   { href: "/settings", label: "Settings" },

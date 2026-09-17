@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { transcribeSession } from "@/app/actions/transcribe";
-import { evaluateSession, EvaluateSessionResult } from "@/app/actions/evaluate";
+import { evaluateSession } from "@/app/actions/evaluate";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
@@ -15,10 +15,13 @@ import {
   Clock,
   Sparkles,
   Layers,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SessionEvaluationView } from "./session-evaluation-view";
 import { EvaluationResult } from "@/lib/ai/evaluation-schema";
+import { deletePracticeSession } from "@/app/actions/recording";
 
 interface SessionTranscriptionViewProps {
   sessionId: string;
@@ -72,12 +75,38 @@ export function SessionTranscriptionView({
   initialEvaluation,
   audioUrl,
 }: SessionTranscriptionViewProps) {
+  const router = useRouter();
   const [transcript, setTranscript] = useState(initialTranscript);
   const [evaluation, setEvaluation] = useState(initialEvaluation);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isTranscribing, startTranscriptionTransition] = useTransition();
   const [isEvaluating, startEvaluationTransition] = useTransition();
   const [showSegments, setShowSegments] = useState(false);
+
+  const handleDeleteSession = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this practice session? All recordings, transcripts, and evaluation metrics for this session will be permanently removed."
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await deletePracticeSession(sessionId);
+      if (res.success) {
+        router.push("/dashboard");
+      } else {
+        setError(res.error || "Failed to delete session.");
+        setIsDeleting(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete session.");
+      setIsDeleting(false);
+    }
+  };
 
   const isTranscriptionDone = Boolean(transcript?.text);
   const isEvaluationDone = Boolean(evaluation?.overall_score !== undefined);
@@ -145,8 +174,10 @@ export function SessionTranscriptionView({
       <div className="flex items-center justify-between border-b border-border/70 pb-5">
         <div className="flex items-center gap-3">
           <Link
-            href={`/practice/${prompt.id}`}
+            href="/sessions"
             className="p-2 -ml-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title="Back to sessions"
+            aria-label="Back to sessions"
           >
             <ArrowLeft size={18} />
           </Link>
@@ -166,6 +197,21 @@ export function SessionTranscriptionView({
           </Button>
           <Button asChild size="sm" className="text-xs">
             <Link href="/dashboard">Dashboard</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDeleteSession}
+            disabled={isDeleting}
+            className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 h-9"
+            title="Delete this session"
+          >
+            {isDeleting ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Trash2 size={14} />
+            )}
+            <span className="hidden sm:inline">Delete</span>
           </Button>
         </div>
       </div>

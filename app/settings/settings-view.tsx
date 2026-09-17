@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { User, Shield, Cpu, Database, CheckCircle2, AlertTriangle, Download, Trash2 } from "lucide-react";
+import { User, Shield, Cpu, Database, CheckCircle2, AlertTriangle, Download, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { purgeUserAudio } from "@/app/actions/recording";
 
 interface SettingsViewProps {
   userEmail: string;
@@ -16,6 +17,8 @@ interface SettingsViewProps {
 
 export function SettingsView({ userEmail, profile }: SettingsViewProps) {
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeStatus, setPurgeStatus] = useState<{ text: string; isError?: boolean } | null>(null);
 
   const handleExportData = () => {
     const data = {
@@ -34,6 +37,40 @@ export function SettingsView({ userEmail, profile }: SettingsViewProps) {
 
     setCopiedNotification("Profile data exported successfully.");
     setTimeout(() => setCopiedNotification(null), 3000);
+  };
+
+  const handlePurgeAudio = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to purge all audio recordings? Your session history, transcripts, and evaluation metrics will remain intact, but raw audio files in cloud storage will be permanently deleted."
+      )
+    ) {
+      return;
+    }
+
+    setIsPurging(true);
+    setPurgeStatus(null);
+
+    try {
+      const res = await purgeUserAudio();
+      if (res.success) {
+        setPurgeStatus({
+          text: `Purged ${res.count ?? 0} audio recording file(s). Practice metrics and evaluations have been preserved.`,
+        });
+      } else {
+        setPurgeStatus({
+          text: res.error || "Failed to purge audio files.",
+          isError: true,
+        });
+      }
+    } catch (err) {
+      setPurgeStatus({
+        text: err instanceof Error ? err.message : "Failed to purge audio files.",
+        isError: true,
+      });
+    } finally {
+      setIsPurging(false);
+    }
   };
 
   return (
@@ -188,11 +225,12 @@ export function SettingsView({ userEmail, profile }: SettingsViewProps) {
           <Button
             variant="outline"
             size="sm"
+            disabled={isPurging}
             className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs font-medium gap-1.5"
-            onClick={() => alert("Audio deletion feature: In Phase 7+, you can batch purge recording files while preserving score histories.")}
+            onClick={handlePurgeAudio}
           >
-            <Trash2 size={13} />
-            Purge Audio Files
+            {isPurging ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+            {isPurging ? "Purging Audio..." : "Purge Audio Files"}
           </Button>
 
           <Button
@@ -204,6 +242,19 @@ export function SettingsView({ userEmail, profile }: SettingsViewProps) {
             Delete Account
           </Button>
         </div>
+
+        {purgeStatus && (
+          <div
+            className={`p-3 text-xs font-medium rounded-lg flex items-center gap-2 animate-in fade-in duration-200 ${
+              purgeStatus.isError
+                ? "text-destructive bg-destructive/10 border border-destructive/20"
+                : "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+            }`}
+          >
+            {purgeStatus.isError ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
+            <span>{purgeStatus.text}</span>
+          </div>
+        )}
       </div>
     </div>
   );

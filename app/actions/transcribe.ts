@@ -102,6 +102,8 @@ export async function transcribeSession(
       file: audioBlob,
       fileName,
       language: "en",
+      prompt:
+        "This is a conversation from Sri Lanka involving people like Piyum, Aloka, and Sethma, discussing places such as Colombo, Gampaha, and Yakkala.",
     });
 
     if (!transcription.text && transcription.text !== "") {
