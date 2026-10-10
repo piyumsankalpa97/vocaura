@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 const GOAL_OPTIONS = [
@@ -28,6 +29,11 @@ export function OnboardingForm() {
   const [goals, setGoals] = useState<string[]>([]);
   const [professionalContext, setProfessionalContext] = useState("");
   const [confidence, setConfidence] = useState("5");
+
+  // Personal vocabulary states
+  const [locations, setLocations] = useState<string[]>(["Colombo", "Gampaha"]);
+  const [people, setPeople] = useState<string[]>([]);
+  const [workTerms, setWorkTerms] = useState<string[]>([]);
 
   const handleGoalToggle = (goal: string) => {
     setGoals((current) =>
@@ -69,6 +75,29 @@ export function OnboardingForm() {
 
       if (insertError) {
         throw insertError;
+      }
+
+      // Insert initial personal vocabulary
+      const allVocabItems: Array<{ user_id: string; entity: string; category: string }> = [
+        ...locations.map((loc) => ({ user_id: user.id, entity: loc.trim(), category: "Location" })),
+        ...people.map((p) => ({ user_id: user.id, entity: p.trim(), category: "Person" })),
+        ...workTerms.map((w) => ({ user_id: user.id, entity: w.trim(), category: "Workplace" })),
+      ].filter((item) => item.entity.length > 0);
+
+      // user_vocabulary is unique on (user_id, entity), so keep the first occurrence
+      // of each entity or Postgres rejects the whole upsert.
+      const vocabItems = allVocabItems.filter(
+        (item, index) => allVocabItems.findIndex((other) => other.entity === item.entity) === index
+      );
+
+      if (vocabItems.length > 0) {
+        const { error: vocabError } = await supabase
+          .from("user_vocabulary")
+          .upsert(vocabItems, { onConflict: "user_id,entity" });
+        // Vocabulary is optional and editable in Settings, so don't block onboarding.
+        if (vocabError) {
+          console.error("Failed to save initial vocabulary:", vocabError);
+        }
       }
 
       router.push("/dashboard");
@@ -167,6 +196,45 @@ export function OnboardingForm() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Personal Vocabulary Section */}
+        <div className="pt-4 border-t border-border space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              Personal Vocabulary (Optional)
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Add local Sri Lankan places, names, or workplaces you frequently mention so Vocaura can correct them if the transcription mishears them.
+            </p>
+          </div>
+
+          <VocabularyChipInput
+            label="Frequent Locations (Cities, Towns)"
+            placeholder="e.g. Colombo, Gampaha, Kandy (press Enter)"
+            items={locations}
+            onAdd={(val) => setLocations((prev) => Array.from(new Set([...prev, val])))}
+            onRemove={(val) => setLocations((prev) => prev.filter((item) => item !== val))}
+            disabled={isLoading}
+          />
+
+          <VocabularyChipInput
+            label="People / Family / Colleague Names"
+            placeholder="e.g. Aloka, Sethma, Nimal (press Enter)"
+            items={people}
+            onAdd={(val) => setPeople((prev) => Array.from(new Set([...prev, val])))}
+            onRemove={(val) => setPeople((prev) => prev.filter((item) => item !== val))}
+            disabled={isLoading}
+          />
+
+          <VocabularyChipInput
+            label="Workplace, University, or Organizations"
+            placeholder="e.g. Sysco, SLIIT, WSO2, Asiri (press Enter)"
+            items={workTerms}
+            onAdd={(val) => setWorkTerms((prev) => Array.from(new Set([...prev, val])))}
+            onRemove={(val) => setWorkTerms((prev) => prev.filter((item) => item !== val))}
+            disabled={isLoading}
+          />
+        </div>
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading || !displayName || !role}>
@@ -180,5 +248,77 @@ export function OnboardingForm() {
         )}
       </Button>
     </form>
+  );
+}
+
+function VocabularyChipInput({
+  label,
+  placeholder,
+  items,
+  onAdd,
+  onRemove,
+  disabled,
+}: {
+  label: string;
+  placeholder: string;
+  items: string[];
+  onAdd: (item: string) => void;
+  onRemove: (item: string) => void;
+  disabled?: boolean;
+}) {
+  const [inputVal, setInputVal] = useState("");
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const trimmed = inputVal.trim().replace(/^,|,$/g, "");
+      if (trimmed) {
+        onAdd(trimmed);
+        setInputVal("");
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    const trimmed = inputVal.trim().replace(/^,|,$/g, "");
+    if (trimmed) {
+      onAdd(trimmed);
+      setInputVal("");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="flex flex-wrap gap-1.5 min-h-[32px] p-1.5 rounded-lg border border-input bg-background/50 focus-within:ring-1 focus-within:ring-ring">
+        {items.map((item) => (
+          <Badge
+            key={item}
+            variant="secondary"
+            className="text-xs py-0.5 px-2 flex items-center gap-1 font-normal bg-accent text-accent-foreground"
+          >
+            <span>{item}</span>
+            <button
+              type="button"
+              onClick={() => onRemove(item)}
+              disabled={disabled}
+              className="text-muted-foreground hover:text-foreground font-bold text-xs leading-none"
+            >
+              ×
+            </button>
+          </Badge>
+        ))}
+        <input
+          type="text"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          placeholder={items.length === 0 ? placeholder : "Add another..."}
+          disabled={disabled}
+          className="flex-1 min-w-[140px] bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none px-1 py-0.5"
+        />
+      </div>
+    </div>
   );
 }

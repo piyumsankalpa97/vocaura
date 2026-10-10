@@ -274,10 +274,18 @@ export async function evaluateSession(
 
     console.error("Evaluation error:", errorMessage);
 
-    // Keep transcript intact and mark session as failed
+    // Keep transcript intact. Only mark the session failed if no earlier
+    // evaluation exists, so a failed re-run never hides a completed result.
+    const { data: priorEvaluation } = await supabase
+      .from("evaluations")
+      .select("id")
+      .eq("session_id", sessionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
     await supabase
       .from("practice_sessions")
-      .update({ status: "failed" })
+      .update({ status: priorEvaluation ? "completed" : "failed" })
       .eq("id", sessionId)
       .eq("user_id", user.id);
 

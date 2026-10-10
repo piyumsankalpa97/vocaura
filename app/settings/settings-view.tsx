@@ -4,6 +4,8 @@ import { useState } from "react";
 import { User, Shield, Cpu, Database, CheckCircle2, AlertTriangle, Download, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { purgeUserAudio } from "@/app/actions/recording";
+import { VocabularyItem } from "@/app/actions/vocabulary";
+import { VocabularyManager } from "./vocabulary-manager";
 
 interface SettingsViewProps {
   userEmail: string;
@@ -13,9 +15,10 @@ interface SettingsViewProps {
     created_at?: string;
     goals?: string[];
   } | null;
+  vocabulary: VocabularyItem[];
 }
 
-export function SettingsView({ userEmail, profile }: SettingsViewProps) {
+export function SettingsView({ userEmail, profile, vocabulary }: SettingsViewProps) {
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
   const [isPurging, setIsPurging] = useState(false);
   const [purgeStatus, setPurgeStatus] = useState<{ text: string; isError?: boolean } | null>(null);
@@ -118,6 +121,9 @@ export function SettingsView({ userEmail, profile }: SettingsViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Personal Vocabulary */}
+      <VocabularyManager initialItems={vocabulary} />
 
       {/* 2. AI Providers Status */}
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-5">

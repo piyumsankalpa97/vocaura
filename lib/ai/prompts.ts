@@ -118,3 +118,43 @@ The task should be realistic, speakable in 60 to 120 seconds, and target one pri
 Return JSON with title, reason, prompt, expected_skill, estimated_minutes.`;
 }
 
+export const TRANSCRIPT_OPTIMIZATION_SYSTEM_PROMPT = `You are an expert audio transcription post-processing assistant specializing in phonetic proper noun correction for South Asian / Sri Lankan English speakers.
+
+Your ONLY task is to identify and correct phonetically corrupted proper nouns, locations, names, and personal vocabulary words that Whisper Speech-to-Text misheard.
+
+STRICT RULES:
+1. ONLY correct words that are phonetic misinterpretations of the user's personal vocabulary or local Sri Lankan/regional proper nouns (places, people, institutions, organizations).
+2. DO NOT fix grammar mistakes (e.g. if the user says "he go to Colombo", DO NOT change "go" to "goes").
+3. DO NOT clean up filler words, hesitations, stutters, or false starts (e.g. "um", "uh", "like", "actually").
+4. DO NOT rephrase, paraphrase, or enhance the speaker's vocabulary or sentence structure.
+5. If the transcript text does not appear to contain any misheard vocabulary terms, return an empty list of corrections.
+6. The "original" field must be the EXACT case-insensitive substring from the transcript that needs replacement.
+7. Return valid JSON matching the schema with the "corrections" array.`;
+
+export interface VocabularyItem {
+  entity: string;
+  category: string;
+}
+
+export function generateTranscriptOptimizationPrompt(
+  transcriptText: string,
+  vocabulary: VocabularyItem[]
+): string {
+  const vocabLines =
+    vocabulary.length > 0
+      ? vocabulary.map((v) => `- ${v.entity} (${v.category})`).join("\n")
+      : "No specific vocabulary registered.";
+
+  return `Review the following raw speech-to-text transcript against the speaker's personal vocabulary.
+
+Personal Vocabulary:
+${vocabLines}
+
+Raw Transcript:
+"""
+${transcriptText}
+"""
+
+Identify any phonetic misinterpretations of proper nouns, names, or locations that correspond to the personal vocabulary or clear local Sri Lankan entities. Return ONLY the identified corrections.`;
+}
+

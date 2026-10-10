@@ -96,7 +96,6 @@ export async function syncEvaluationMistakes(
         .update({
           occurrence_count: (existing.occurrence_count || 1) + 1,
           last_seen_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
           type: item.type,
           severity: item.severity || existing.severity || "medium",
           incorrect_example: item.example || existing.incorrect_example,

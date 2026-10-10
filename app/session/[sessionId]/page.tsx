@@ -55,7 +55,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
   if (recording) {
     const { data: transcriptData } = await supabase
       .from("transcripts")
-      .select("id, text, language, word_count, segment_timestamps")
+      .select("id, text, original_text, language, word_count, segment_timestamps, optimization_changes")
       .eq("recording_id", recording.id)
       .eq("user_id", user.id)
       .maybeSingle();

@@ -8,10 +8,12 @@ export interface TranscribeSessionResult {
   transcript?: {
     id: string;
     text: string;
+    original_text?: string | null;
     language: string | null;
     word_count: number | null;
     segment_timestamps: unknown;
     word_timestamps: unknown;
+    optimization_changes?: unknown;
   };
   error?: string;
 }
@@ -59,7 +61,7 @@ export async function transcribeSession(
   if (!options?.force && recording.transcription_status === "completed") {
     const { data: existingTranscript } = await supabase
       .from("transcripts")
-      .select("id, text, language, word_count, segment_timestamps, word_timestamps")
+      .select("id, text, original_text, language, word_count, segment_timestamps, word_timestamps, optimization_changes")
       .eq("recording_id", recording.id)
       .eq("user_id", user.id)
       .single();
@@ -118,6 +120,7 @@ export async function transcribeSession(
           recording_id: recording.id,
           user_id: user.id,
           text: transcription.text,
+          original_text: transcription.text,
           language: transcription.language || "en",
           word_count: transcription.wordCount,
           segment_timestamps: transcription.segments || [],
@@ -125,14 +128,14 @@ export async function transcribeSession(
         },
         { onConflict: "recording_id" }
       )
-      .select("id, text, language, word_count, segment_timestamps, word_timestamps")
+      .select("id, text, original_text, language, word_count, segment_timestamps, word_timestamps, optimization_changes")
       .single();
 
     if (transcriptError) {
       throw new Error(`Failed to save transcript: ${transcriptError.message}`);
     }
 
-    // 8. Update recording & session status to success (ready for Phase 5: analyzing)
+    // 8. Update recording & session status to transcribed
     await supabase
       .from("recordings")
       .update({
@@ -145,7 +148,7 @@ export async function transcribeSession(
 
     await supabase
       .from("practice_sessions")
-      .update({ status: "analyzing" })
+      .update({ status: "transcribed" })
       .eq("id", sessionId)
       .eq("user_id", user.id);
 

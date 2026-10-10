@@ -55,12 +55,23 @@ export default async function SessionsPage({ searchParams }: SessionsPageProps) 
       case "analyzing":
       case "transcribing":
       case "uploaded":
+      case "transcribed":
+      case "optimizing":
         return (
           <Badge
             variant="secondary"
             className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/20"
           >
             Processing
+          </Badge>
+        );
+      case "reviewing":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20"
+          >
+            Needs review
           </Badge>
         );
       default:

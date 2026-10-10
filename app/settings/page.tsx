@@ -8,6 +8,8 @@ export const metadata = {
   description: "Account settings, AI evaluation preferences, and data management.",
 };
 
+import { VocabularyItem } from "@/app/actions/vocabulary";
+
 export default async function SettingsPage() {
   const supabase = await createClient();
 
@@ -16,6 +18,8 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
 
   let profile = null;
+  let vocabulary: VocabularyItem[] = [];
+
   if (user) {
     const { data } = await supabase
       .from("profiles")
@@ -23,6 +27,15 @@ export default async function SettingsPage() {
       .eq("id", user.id)
       .single();
     profile = data;
+
+    const { data: vocabData } = await supabase
+      .from("user_vocabulary")
+      .select("entity, category")
+      .eq("user_id", user.id);
+      
+    if (vocabData) {
+      vocabulary = vocabData;
+    }
   }
 
   return (
@@ -38,7 +51,7 @@ export default async function SettingsPage() {
         description="Manage your profile, speaking focus, AI evaluation providers, and audio privacy preferences."
       />
 
-      <SettingsView userEmail={user?.email || "user@vocaura.local"} profile={profile} />
+      <SettingsView userEmail={user?.email || "user@vocaura.local"} profile={profile} vocabulary={vocabulary} />
     </div>
   );
 }

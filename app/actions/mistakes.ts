@@ -122,7 +122,6 @@ export async function toggleMistakeResolved(
       .from("mistakes")
       .update({
         resolved: nextState,
-        updated_at: new Date().toISOString(),
       })
       .eq("id", validId)
       .eq("user_id", user.id);
